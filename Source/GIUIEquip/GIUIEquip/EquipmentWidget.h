@@ -4,6 +4,10 @@
 
 #include "Foundation/PawnWidget.h"
 
+#include "Type/EquipmentMessageTypes.h"
+
+#include "GameplayTagContainer.h"
+
 #include "EquipmentWidget.generated.h"
 
 class UEquipmentManagerComponent;
@@ -12,62 +16,134 @@ class UItemData;
 
 
 /**
- * Widget with the ability to track Pawn owned by the PlayerController that owns this widget
+ * Equipment status of equipment being tracked
+ */
+UENUM()
+enum class EAssociateEquipmentEquipedState : uint8
+{
+	Unknown = 0,
+	NotEquiped = 1,
+	Equiped = 2
+};
+
+
+/**
+ * Widget with the ability to track the equipment of the Pawn that owns this widget
  * 
  * Tips:
- *	This can be used for widgets that display Pawn information (e.g. health bar, etc.)
+ *	Can be used to create widgets that display equipment status
  */
 UCLASS(Abstract, Blueprintable)
-class GUIEXT_API UEquipmentWidget : public UPawnWidget
+class GIUIEQUIP_API UEquipmentWidget : public UPawnWidget
 {
 	GENERATED_BODY()
 public:
 	UEquipmentWidget(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 protected:
-	virtual void NativeOnInitialized() override;
 	virtual void NativeDestruct() override;
 
+	virtual void OnPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn) override;
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// Equipment Manager
+protected:
+	//
+	// EquipmentManager of the Pawn that owns this widget
+	//
+	UPROPERTY(Transient)
+	TWeakObjectPtr<UEquipmentManagerComponent> EquipmentManagerComponent{ nullptr };
+
+protected:
+	/**
+	 * Cache the EquipmentManager of the current Pawn
+	 */
+	void CacheEquipmentManager();
+
+	/**
+	 * Listen for equipment slot change event
+	 */
+	void ListenEquipmentSlotEvent();
+
+	/**
+	 * Unlisten for equipment slot change event
+	 */
+	void UnlistenEquipmentSlotEvent();
+
+	/**
+	 * Notifies that active slot changed
+	 * 
+	 * Tips:
+	 *	Also executed when a new equipment manager is cached by ChacheEquipmentManager()
+	 */
+	UFUNCTION()
+	virtual void HandleActiveSlotChange(FEquipmentSlotChangedMessage Param);
+
+	/**
+	 * Notifies that associate slot item changed
+	 *
+	 * Tips:
+	 *	Also executed when a new equipment manager is cached by ChacheEquipmentManager()
+	 */
+	UFUNCTION()
+	virtual void HandleAssociateSlotChange(FEquipmentSlotChangedMessage Param);
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// Equipment
+protected:
+	//
+	// Equipment slots for the equipment tracked in this widget
+	//
+	UPROPERTY(EditDefaultsOnly, Category = "Equipment", meta = (Categories = "Equipment.Slot"))
+	FGameplayTag AssociateSlotTag;
 
 protected:
 	//
-	// Pawn owned by the PlayerController that owns this widget
+	// Insutance of the equipment tracked by this widget
 	//
 	UPROPERTY(Transient)
-	TWeakObjectPtr<APawn> OwningPawn{ nullptr };
+	TWeakObjectPtr<UEquipment> Equipment{ nullptr };
+
+	//
+	// ItemData of the equipment tracked by this widget
+	//
+	UPROPERTY(Transient)
+	TWeakObjectPtr<const UItemData> ItemData{ nullptr };
+
+	//
+	// Whether tracking equipment is equipped with
+	//
+	UPROPERTY(Transient)
+	EAssociateEquipmentEquipedState EquipedState{ EAssociateEquipmentEquipedState::Unknown };
 
 public:
 	/**
-	 * Get the Pawn owned by the PlayerController that owns this widget
-	 * 
-	 * Tips:
-	 *	Basically returns the same as GetOwningPlayerPawn(), but caches the previously retrieved Pawn.
+	 * Get the Insutance of the equipment tracked by this widget
 	 */
-	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Pawn", meta = (DisplayName = "GetPawn"))
-	APawn* GetCachedPawn();
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment", meta = (DisplayName = "GetEquipmentInstance"))
+	UEquipment* GetCachedEquipment();
+
+	/**
+	 * Get the ItemData of the equipment tracked by this widget
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment", meta = (DisplayName = "GetItemData"))
+	const UItemData* GetCachedItemData();
+
+	/**
+	 * Return whether tracking equipment is equipped with
+	 */
+	UFUNCTION(BlueprintCallable, BlueprintPure, Category = "Equipment", meta = (DisplayName = "GetItemData"))
+	bool HasEquiped() const;
 
 protected:
-	/**
-	 * Listen for Pawn changes
-	 */
-	void ListenPawnChange();
+	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
+	void OnActiveSlotChange(bool bEquiped);
+	virtual void OnActiveSlotChange_Implementation(bool bEquiped) {}
 
-	/**
-	 * Unlisten for Pawn changes
-	 */
-	void UnlistenPawnChange();
-
-	/**
-	 * Notifies that Pawn has been changed
-	 * 
-	 * Tips:
-	 *	Also executed when a new Pawn is cached by GetPawn()
-	 */
-	UFUNCTION()
-	virtual void HandlePawnChange(APawn* OldPawn, APawn* NewPawn);
-
-	UFUNCTION(BlueprintNativeEvent, Category = "Pawn")
-	void OnPawnChanged(APawn* OldPawn, APawn* NewPawn);
-	virtual void OnPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn) {}
+	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
+	void OnSlotItemChanged(const UItemData* Data, UEquipment* Instance);
+	virtual void OnSlotItemChanged_Implementation(const UItemData* Data, UEquipment* Instance) {}
 
 };

@@ -23,11 +23,11 @@
 	],
 	"Plugins": [
 		{
-			"Name": "GLExt",
+			"Name": "GUIExt",
 			"Enabled": true
 		},
 		{
-			"Name": "GAExt",
+			"Name": "GEEquip",
 			"Enabled": true
 		}
 	]

@@ -30,7 +30,7 @@ public class GIUIEquip : ModuleRules
         PrivateDependencyModuleNames.AddRange(
             new string[]
             {
-                "GCItem", "GUIExt", "GEEquip",
+                "GCItem", "GFCore", "GUIExt", "GEEquip",
             }
         );
     }

@@ -4,7 +4,12 @@
 
 #include "Foundation/PawnWidget.h"
 
+// Game Equipment Extension
 #include "Type/EquipmentMessageTypes.h"
+
+// Game Framework Core
+#include "GameplayTag/GameplayTagStackMessageTypes.h"
+#include "Message/GameplayMessageSubsystem.h"
 
 #include "GameplayTagContainer.h"
 
@@ -28,6 +33,26 @@ enum class EAssociateEquipmentEquipedState : uint8
 
 
 /**
+ * Types of targets to track StatTag
+ */
+UENUM(BlueprintType)
+enum class ETrackingStatTagTarget : uint8
+{
+	// Tracking StatTag of the instance of equipment being tracked
+	EquipmentInstance,
+
+	// Pawn owned by the PlayerController that owns this widget
+	Pawn,
+
+	// PlayerController that owns this widget
+	PlayerController,
+
+	// PlayerState of the PlayerController that owns this widget.
+	PlayerState
+};
+
+
+/**
  * Widget with the ability to track the equipment of the Pawn that owns this widget
  * 
  * Tips:
@@ -41,9 +66,52 @@ public:
 	UEquipmentWidget(const FObjectInitializer& ObjectInitializer = FObjectInitializer::Get());
 
 protected:
+	virtual void NativeOnInitialized() override;
 	virtual void NativeDestruct() override;
 
 	virtual void OnPawnChanged_Implementation(APawn* OldPawn, APawn* NewPawn) override;
+
+
+	/////////////////////////////////////////////////////////////////////////////////
+	// Stat Tag
+protected:
+	UPROPERTY(EditAnywhere, Category = "Equipment|StatTag")
+	bool bTrackingStatTagMessage{ true };
+
+	UPROPERTY(EditAnywhere, Category = "Equipment|StatTag", meta = (EditCondition = "bTrackingStatTagMessage", Categories = "Stat"))
+	FGameplayTagContainer TrackingStatTags;
+
+	UPROPERTY(EditAnywhere, Category = "Equipment|StatTag", meta = (EditCondition = "bTrackingStatTagMessage"))
+	ETrackingStatTagTarget TrackingStatTagTarget{ ETrackingStatTagTarget::EquipmentInstance };
+
+private:
+	UPROPERTY(Transient)
+	FGameplayMessageListenerHandle StatTagStockMessageListenerHandle;
+
+protected:
+	/**
+	 * Returns a target object that tracks StatTag
+	 */
+	UObject* GetStatTagTargetObject() const;
+
+	/**
+	 * Listen for equipment slot change event
+	 */
+	virtual void ListenMessageEvents();
+
+	/**
+	 * Listen for equipment slot change event
+	 */
+	virtual void UnlistenMessageEvents();
+
+	/**
+	 * Notifies that Stat tag change
+	 */
+	void HandleStatTagStockMessage(FGameplayTag MessageTag, const FGameplayTagStackCountChangeMessage& Message);
+
+	UFUNCTION(BlueprintNativeEvent, Category = "Equipment")
+	void OnStatTagChanged(const FGameplayTagStackCountChangeMessage& Message);
+	virtual void OnStatTagChanged_Implementation(const FGameplayTagStackCountChangeMessage& Message) {}
 
 
 	/////////////////////////////////////////////////////////////////////////////////
